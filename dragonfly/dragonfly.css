@@ -1,0 +1,24 @@
+.container{
+    display: flex;
+    flex-direction: column;
+    width: 100vw;
+    min-height: 100vh;
+    background: linear-gradient(315deg, #728d47, #c00e17);
+}
+
+.nav-menu ul li{
+    border: 2px solid black;
+}
+
+.nav-menu ul li:hover{
+    background: #9bbe63;
+}
+
+.nav-menu ul li a{
+    color: white;
+}
+
+.species-class,
+.p-tables{
+    font-weight: 500;
+}

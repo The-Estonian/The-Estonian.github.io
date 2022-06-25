@@ -1,0 +1,35 @@
+Requirements for the Animal encyclopedia:
+Create a small animal encyclopedia that consists of 7 animals.
+The encyclopedia should have a well formed and designed main page with the hyperlinks that leads to separate pages dedicated to a different animal. 
+Let the user know that this is the main page, emphasise it; list the available animals to browse. Describe what this encyclopedia is designed for.
+Pages for the each animal MUST BE CREATED BY YOU.
+Each animal page must have its own unique design (colour scheme) that defines and suits the animal the best (e.g. elephant gets grey background, flamingo gets pink background, different font style for the header etc.) . Use your designer’s imagination.
+Each animal must include:
+- An image
+
+- An embedded video (from YouTube) where the animal is demonstrated in action
+
+- Description
+
+- An unordered list with the Scientific classification (kingdom, phylum, class, order, family). Everything is described in the Wikipedia on the right sided, under the picture
+
+- A table consisting of image and species column, and 3 data rows. Example: https://en.wikipedia.org/wiki/Flamingo#:~:text=%E2%80%AF-,Species,-Six%20extant%20flamingo
+HTML page should contain the following elements and tags:
+- Headers (<h1>...<h6>)
+- Lists
+- Article (<p>...)
+- Images (<img>...)
+- Hyperlinks (<a>...)
+- Text formatting tags (format information according to the context)
+- Break lines, line rules
+- Tables
+- Videos (<video>...)
+- Containers (<div>...)
+
+- Anything else you feel needed and researched by yourself
+:first_place_medal: EXTRA TASKS:
+Not this time. Let’s match everyone’s pace.
+:bulb: This mini-project is based solely on your imagination and creativity.
+Use Google if you want to do something/apply some style that you don’t know how to define.
+:bulb: This homework will be the base for the JavaScript homework.
+You will be able to modify it later, introducing the backend technologies.

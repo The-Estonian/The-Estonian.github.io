@@ -1,0 +1,31 @@
+.container{
+    display: flex;
+    flex-direction: column;
+    width: 100vw;
+    min-height: 100vh;
+    background: linear-gradient(315deg, #322d2a, #e7a105);
+}
+
+
+.nav-menu ul li{
+    border: 2px solid black;
+    color: black;
+}
+
+.nav-menu ul li:hover{
+    background: #322d2a;
+}
+
+.nav-menu ul li a{
+    color: black;
+}
+
+.nav-menu ul li:hover a{
+    color: white;
+}
+
+.species-class,
+.p-tables{
+    font-weight: 500;
+}
+

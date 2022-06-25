@@ -1,0 +1,130 @@
+.main-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: linear-gradient(315deg, #ffba08, #6a040f);
+}
+
+
+
+.nav-h1-img h1,
+.nav-h1-img h2,
+.nav-h1-img h3 {
+  color: white;
+  padding: 3px;
+  padding-top: 0px;
+}
+
+
+.nav-menu ul li {
+  border: 2px solid red;
+}
+
+.nav-menu ul li a {
+  color: white;
+}
+
+.menu-video {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin-top: auto;
+}
+
+
+
+.h1-menu{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: auto;
+}
+
+.h1-menu h1{
+  transform: rotate(335deg);
+  margin: 50px 0;
+  padding: 5px 10px;
+  border-radius: 12px;
+  box-shadow: 10px 10px 20px rgba(0, 0, 0, 0.5);
+  color: white;
+  background: linear-gradient(transparent, #370617);
+}
+
+.nav-menu{
+  margin: 30px;
+  margin-right: auto;
+}
+
+
+.nav-menu ul > li:nth-child(n) {
+  opacity: 100;
+  border-radius: 30px 0px 30px 0px;
+}
+
+.picture-container{
+  display: flex;
+  flex-direction: row;
+  margin: auto;
+  width: 90%;
+}
+
+.A-1{
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.A-1 img{
+  display: block;
+  max-width: 700px;
+  max-height: 700px;
+  width: auto;
+  height: auto;
+  border: 1px solid white;
+  border-radius: 10px;
+  box-shadow: 10px 10px 20px rgba(0, 0, 0, 0.5);
+  margin: 5px;
+}
+
+.A-2{
+  display: flex;
+}
+
+.A-2 img{
+  display: block;
+  max-width: 345px;
+  max-height: 255px;
+  min-height: 235px;;
+  width: auto;
+  height: auto;
+  border: 1px white solid;
+  border-radius: 10px;
+  box-shadow: 10px 10px 20px rgba(0, 0, 0, 0.5);
+  margin: 5px;
+}
+
+.B-1{
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}
+
+.B-1 img{
+  display: block;
+  max-width: 360px;
+  max-height: 440px;
+  width: auto;
+  height: auto;
+  border: 1px white solid;
+  border-radius: 10px;
+  box-shadow: 10px 10px 20px rgba(0, 0, 0, 0.5);
+  margin: 5px;
+}
+.B-3 img{
+  max-width: 350px;
+  max-height: 438px;
+}
