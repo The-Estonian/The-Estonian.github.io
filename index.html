@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Grocery List Toggle</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 20px;
+        text-align: center;
+        background: #121212;
+        color: white;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 10px;
+        margin-top: 20px;
+      }
+      button {
+        padding: 15px;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+      }
+      .to-buy {
+        background: #e74c3c;
+        color: white;
+      }
+      .in-pantry {
+        background: #2ecc71;
+        color: white;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Grocery List Manager</h2>
+    <p>Tap an item to toggle its state in Discord:</p>
+
+    <div class="grid" id="button-container"></div>
+
+    <script>
+      const WEBHOOK_URL =
+        'https://discord.com/api/webhooks/1553439991735124038/mrzkoLk9noxOQ0j-uasux5xcaausuoJ7iC2qObubO75Ztj9wyw1kdAk_Xbas_UOov22n';
+      const MESSAGE_ID = '1553440659367788578';
+
+      // Pre-defined master item list with default states
+      let items = [
+        { name: 'Milk', toBuy: true },
+        { name: 'Eggs', toBuy: true },
+        { name: 'Bread', toBuy: false },
+        { name: 'Coffee', toBuy: false },
+      ];
+
+      function renderButtons() {
+        const container = document.getElementById('button-container');
+        container.innerHTML = '';
+        items.forEach((item, index) => {
+          const btn = document.createElement('button');
+          btn.textContent = `${item.name} (${item.toBuy ? 'To Buy' : 'Pantry'})`;
+          btn.className = item.toBuy ? 'to-buy' : 'in-pantry';
+          btn.onclick = () => toggleItem(index);
+          container.appendChild(btn);
+        });
+      }
+
+      async function toggleItem(index) {
+        items[index].toBuy = !items[index].toBuy;
+        renderButtons();
+        await updateDiscord();
+      }
+
+      async function updateDiscord() {
+        const toBuyList =
+          items
+            .filter((i) => i.toBuy)
+            .map((i) => `• ${i.name}`)
+            .join('\n') || '*None*';
+        const inPantryList =
+          items
+            .filter((i) => !i.toBuy)
+            .map((i) => `• ${i.name}`)
+            .join('\n') || '*None*';
+
+        const payload = {
+          embeds: [
+            {
+              title: '🛒 Family Grocery List',
+              color: 3447003,
+              fields: [
+                { name: '📌 To Buy', value: toBuyList, inline: true },
+                { name: '✅ In Pantry', value: inPantryList, inline: true },
+              ],
+              timestamp: new Date().toISOString(),
+            },
+          ],
+        };
+
+        // PATCH edits the existing pinned message instead of posting new clutter
+        await fetch(`${WEBHOOK_URL}/messages/${MESSAGE_ID}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      renderButtons();
+    </script>
+  </body>
+</html>
