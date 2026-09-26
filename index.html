@@ -43,9 +43,15 @@
     <div class="grid" id="button-container"></div>
 
     <script>
-      const WEBHOOK_URL =
-        'https://discord.com/api/webhooks/1553439991735124038/mrzkoLk9noxOQ0j-uasux5xcaausuoJ7iC2qObubO75Ztj9wyw1kdAk_Xbas_UOov22n';
-      const MESSAGE_ID = '1553440659367788578';
+      let WEBHOOK_URL = localStorage.getItem('discord_webhook');
+
+      if (!WEBHOOK_URL) {
+        WEBHOOK_URL = prompt('Please enter your Discord Webhook URL:');
+        if (WEBHOOK_URL) {
+          localStorage.setItem('discord_webhook', WEBHOOK_URL);
+        }
+      }
+      const MESSAGE_ID = '1553444411508133930';
 
       // Pre-defined master item list with default states
       let items = [
