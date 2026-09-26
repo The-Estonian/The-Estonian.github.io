@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Grocery List Manager</title>
+    <title>Grocery Manager</title>
     <style>
       body {
         font-family: sans-serif;
@@ -94,7 +94,7 @@
     </style>
   </head>
   <body>
-    <h2>Grocery List Manager</h2>
+    <h2>Grocery Manager</h2>
 
     <div class="add-container">
       <input
@@ -124,9 +124,9 @@
         }
       }
 
-      // PASTE YOUR TWO MESSAGE IDs HERE
-      const MESSAGE_ID_ACTIVE = '1553444411508133930'; // ID of the Top Message (To Buy)
-      const MESSAGE_ID_PANTRY = '1553448201078440050'; // ID of the Bottom Message (In Pantry)
+      // Replace these two strings with your actual Discord Message IDs
+      const MESSAGE_ID_ACTIVE = '1553444411508133930';
+      const MESSAGE_ID_PANTRY = '1553448201078440050';
 
       let items = JSON.parse(localStorage.getItem('grocery_items')) || [
         { name: 'Milk', toBuy: true },
@@ -192,40 +192,38 @@
       async function updateDiscord() {
         if (!WEBHOOK_URL) return;
 
-        // Build active text list
+        // Message 1: Only items marked as To Buy
         const activeText =
           items
             .filter((i) => i.toBuy)
             .map((i) => `• ${i.name}`)
-            .join('\n') || '*No items needed*';
+            .join('\n') || '*None*';
 
-        // Build pantry text list
+        // Message 2: Only items marked as In Pantry / Done
         const pantryText =
           items
             .filter((i) => !i.toBuy)
             .map((i) => `• ${i.name}`)
-            .join('\n') || '*Pantry is empty*';
+            .join('\n') || '*None*';
 
-        // Payload for Top Message
         const activePayload = {
           content: '',
           embeds: [
             {
-              title: '📌 TO BUY',
-              color: 15158332,
+              title: '📌 TO DO (To Buy)',
+              color: 15158332, // Red embed
               description: activeText,
               timestamp: new Date().toISOString(),
             },
           ],
         };
 
-        // Payload for Bottom Message
         const pantryPayload = {
           content: '',
           embeds: [
             {
-              title: '✅ IN PANTRY',
-              color: 3066993,
+              title: '✅ ALREADY DONE (In Pantry)',
+              color: 3066993, // Green embed
               description: pantryText,
               timestamp: new Date().toISOString(),
             },
@@ -233,7 +231,7 @@
         };
 
         try {
-          // Send PATCH to both messages simultaneously
+          // Send PATCH requests to two distinct Discord Message IDs
           await Promise.all([
             fetch(`${WEBHOOK_URL}/messages/${MESSAGE_ID_ACTIVE}`, {
               method: 'PATCH',
@@ -247,7 +245,7 @@
             }),
           ]);
         } catch (err) {
-          console.error('Failed to update Discord messages:', err);
+          console.error('Failed to update Discord:', err);
         }
       }
 
