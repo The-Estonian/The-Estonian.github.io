@@ -11,75 +11,188 @@
         text-align: center;
         background: #121212;
         color: white;
+        max-width: 600px;
+        margin: 0 auto;
       }
-      .grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      .add-container {
+        display: flex;
         gap: 10px;
-        margin-top: 20px;
+        margin-bottom: 20px;
       }
-      button {
-        padding: 15px;
+      input[type='text'] {
+        flex: 1;
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #333;
+        background: #1e1e1e;
+        color: white;
+        font-size: 16px;
+      }
+      .add-btn {
+        padding: 12px 20px;
+        background: #3498db;
+        color: white;
         border: none;
         border-radius: 8px;
-        font-size: 16px;
         font-weight: bold;
         cursor: pointer;
       }
-      .to-buy {
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 10px;
+        margin-top: 20px;
+      }
+      .item-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-radius: 8px;
+        padding: 5px 10px;
+        font-weight: bold;
+      }
+      .item-card.to-buy {
         background: #e74c3c;
         color: white;
       }
-      .in-pantry {
+      .item-card.in-pantry {
         background: #2ecc71;
         color: white;
+      }
+      .toggle-area {
+        flex: 1;
+        text-align: left;
+        padding: 10px 0;
+        cursor: pointer;
+        user-select: none;
+      }
+      .remove-btn {
+        background: rgba(0, 0, 0, 0.2);
+        border: none;
+        color: white;
+        border-radius: 50%;
+        width: 26px;
+        height: 26px;
+        font-size: 14px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .footer-actions {
+        margin-top: 30px;
+      }
+      .reset-btn {
+        background: transparent;
+        border: 1px solid #555;
+        color: #888;
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
       }
     </style>
   </head>
   <body>
     <h2>Grocery List Manager</h2>
-    <p>Tap an item to toggle its state in Discord:</p>
+
+    <!-- Input field for adding new items -->
+    <div class="add-container">
+      <input
+        type="text"
+        id="new-item-input"
+        placeholder="Add item (e.g., Apples)..."
+        onkeydown="if (event.key === 'Enter') addItem();"
+      />
+      <button class="add-btn" onclick="addItem()">Add</button>
+    </div>
 
     <div class="grid" id="button-container"></div>
+
+    <div class="footer-actions">
+      <button class="reset-btn" onclick="resetWebhook()">
+        Reset Webhook URL
+      </button>
+    </div>
 
     <script>
       let WEBHOOK_URL = localStorage.getItem('discord_webhook');
 
-      if (!WEBHOOK_URL) {
+      if (!WEBHOOK_URL || WEBHOOK_URL === 'null' || WEBHOOK_URL.trim() === '') {
         WEBHOOK_URL = prompt('Please enter your Discord Webhook URL:');
         if (WEBHOOK_URL) {
-          localStorage.setItem('discord_webhook', WEBHOOK_URL);
+          localStorage.setItem('discord_webhook', WEBHOOK_URL.trim());
         }
       }
+
       const MESSAGE_ID = '1553444411508133930';
 
-      // Pre-defined master item list with default states
-      let items = [
+      // Load items from local storage or set default baseline
+      let items = JSON.parse(localStorage.getItem('grocery_items')) || [
         { name: 'Milk', toBuy: true },
         { name: 'Eggs', toBuy: true },
         { name: 'Bread', toBuy: false },
         { name: 'Coffee', toBuy: false },
       ];
 
+      function saveAndRender() {
+        localStorage.setItem('grocery_items', JSON.stringify(items));
+        renderButtons();
+      }
+
       function renderButtons() {
         const container = document.getElementById('button-container');
         container.innerHTML = '';
         items.forEach((item, index) => {
-          const btn = document.createElement('button');
-          btn.textContent = `${item.name} (${item.toBuy ? 'To Buy' : 'Pantry'})`;
-          btn.className = item.toBuy ? 'to-buy' : 'in-pantry';
-          btn.onclick = () => toggleItem(index);
-          container.appendChild(btn);
+          const card = document.createElement('div');
+          card.className = `item-card ${item.toBuy ? 'to-buy' : 'in-pantry'}`;
+
+          const toggleArea = document.createElement('div');
+          toggleArea.className = 'toggle-area';
+          toggleArea.textContent = `${item.name}`;
+          toggleArea.onclick = () => toggleItem(index);
+
+          const removeBtn = document.createElement('button');
+          removeBtn.className = 'remove-btn';
+          removeBtn.innerHTML = '✕';
+          removeBtn.onclick = (e) => {
+            e.stopPropagation(); // Prevents triggering toggleItem when deleting
+            removeItem(index);
+          };
+
+          card.appendChild(toggleArea);
+          card.appendChild(removeBtn);
+          container.appendChild(card);
         });
+      }
+
+      async function addItem() {
+        const input = document.getElementById('new-item-input');
+        const name = input.value.trim();
+        if (!name) return;
+
+        // Add new item as 'To Buy' by default
+        items.push({ name: name, toBuy: true });
+        input.value = '';
+        saveAndRender();
+        await updateDiscord();
+      }
+
+      async function removeItem(index) {
+        items.splice(index, 1);
+        saveAndRender();
+        await updateDiscord();
       }
 
       async function toggleItem(index) {
         items[index].toBuy = !items[index].toBuy;
-        renderButtons();
+        saveAndRender();
         await updateDiscord();
       }
 
       async function updateDiscord() {
+        if (!WEBHOOK_URL) return;
+
         const toBuyList =
           items
             .filter((i) => i.toBuy)
@@ -105,15 +218,32 @@
           ],
         };
 
-        // PATCH edits the existing pinned message instead of posting new clutter
-        await fetch(`${WEBHOOK_URL}/messages/${MESSAGE_ID}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
+        try {
+          const response = await fetch(
+            `${WEBHOOK_URL}/messages/${MESSAGE_ID}`,
+            {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            },
+          );
+
+          if (!response.ok) {
+            console.error('Discord API Error:', await response.text());
+          }
+        } catch (err) {
+          console.error('Fetch Failed:', err);
+        }
       }
 
+      function resetWebhook() {
+        localStorage.removeItem('discord_webhook');
+        location.reload();
+      }
+
+      // Initial execution
       renderButtons();
+      updateDiscord();
     </script>
   </body>
 </html>
