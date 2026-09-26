@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Family Lists Toggle</title>
+    <title>Grocery List Manager</title>
     <style>
       body {
         font-family: sans-serif;
@@ -13,25 +13,6 @@
         color: white;
         max-width: 600px;
         margin: 0 auto;
-      }
-      .tab-container {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 20px;
-      }
-      .tab-btn {
-        flex: 1;
-        padding: 12px;
-        border: none;
-        border-radius: 8px;
-        font-weight: bold;
-        cursor: pointer;
-        background: #333;
-        color: #aaa;
-      }
-      .tab-btn.active {
-        background: #2ecc71;
-        color: white;
       }
       .add-container {
         display: flex;
@@ -113,23 +94,8 @@
     </style>
   </head>
   <body>
-    <h2>Family Lists Manager</h2>
+    <h2>Grocery List Manager</h2>
 
-    <!-- Tabs to switch active list -->
-    <div class="tab-container">
-      <button
-        id="tab-groceries"
-        class="tab-btn active"
-        onclick="switchTab('groceries')"
-      >
-        🛒 Groceries
-      </button>
-      <button id="tab-hardware" class="tab-btn" onclick="switchTab('hardware')">
-        🛠️ Hardware
-      </button>
-    </div>
-
-    <!-- Add item container -->
     <div class="add-container">
       <input
         type="text"
@@ -158,41 +124,25 @@
         }
       }
 
-      const MESSAGE_ID = '1553444411508133930';
-      let currentTab = 'groceries';
+      // PASTE YOUR TWO MESSAGE IDs HERE
+      const MESSAGE_ID_ACTIVE = '1553444411508133930'; // ID of the Top Message (To Buy)
+      const MESSAGE_ID_PANTRY = '1553448201078440050'; // ID of the Bottom Message (In Pantry)
 
-      // Multi-list structure saved in localStorage
-      let lists = JSON.parse(localStorage.getItem('family_lists')) || {
-        groceries: [
-          { name: 'Milk', toBuy: true },
-          { name: 'Eggs', toBuy: true },
-          { name: 'Bread', toBuy: false },
-        ],
-        hardware: [
-          { name: 'Screws (M4)', toBuy: true },
-          { name: 'Tape', toBuy: false },
-        ],
-      };
-
-      function switchTab(tab) {
-        currentTab = tab;
-        document.getElementById('tab-groceries').className =
-          `tab-btn ${tab === 'groceries' ? 'active' : ''}`;
-        document.getElementById('tab-hardware').className =
-          `tab-btn ${tab === 'hardware' ? 'active' : ''}`;
-        renderButtons();
-      }
+      let items = JSON.parse(localStorage.getItem('grocery_items')) || [
+        { name: 'Milk', toBuy: true },
+        { name: 'Eggs', toBuy: true },
+        { name: 'Bread', toBuy: false },
+        { name: 'Coffee', toBuy: false },
+      ];
 
       function saveAndRender() {
-        localStorage.setItem('family_lists', JSON.stringify(lists));
+        localStorage.setItem('grocery_items', JSON.stringify(items));
         renderButtons();
       }
 
       function renderButtons() {
         const container = document.getElementById('button-container');
         container.innerHTML = '';
-        const items = lists[currentTab];
-
         items.forEach((item, index) => {
           const card = document.createElement('div');
           card.className = `item-card ${item.toBuy ? 'to-buy' : 'in-pantry'}`;
@@ -221,75 +171,83 @@
         const name = input.value.trim();
         if (!name) return;
 
-        lists[currentTab].push({ name: name, toBuy: true });
+        items.push({ name: name, toBuy: true });
         input.value = '';
         saveAndRender();
         await updateDiscord();
       }
 
       async function removeItem(index) {
-        lists[currentTab].splice(index, 1);
+        items.splice(index, 1);
         saveAndRender();
         await updateDiscord();
       }
 
       async function toggleItem(index) {
-        lists[currentTab][index].toBuy = !lists[currentTab][index].toBuy;
+        items[index].toBuy = !items[index].toBuy;
         saveAndRender();
         await updateDiscord();
-      }
-
-      function formatList(items) {
-        const toBuy =
-          items
-            .filter((i) => i.toBuy)
-            .map((i) => `• ${i.name}`)
-            .join('\n') || '*None*';
-        const pantry =
-          items
-            .filter((i) => !i.toBuy)
-            .map((i) => `• ${i.name}`)
-            .join('\n') || '*None*';
-        return { toBuy, pantry };
       }
 
       async function updateDiscord() {
         if (!WEBHOOK_URL) return;
 
-        const g = formatList(lists.groceries);
-        const h = formatList(lists.hardware);
+        // Build active text list
+        const activeText =
+          items
+            .filter((i) => i.toBuy)
+            .map((i) => `• ${i.name}`)
+            .join('\n') || '*No items needed*';
 
-        const payload = {
+        // Build pantry text list
+        const pantryText =
+          items
+            .filter((i) => !i.toBuy)
+            .map((i) => `• ${i.name}`)
+            .join('\n') || '*Pantry is empty*';
+
+        // Payload for Top Message
+        const activePayload = {
           content: '',
           embeds: [
             {
-              title: '🛒 To Do List',
-              color: 3447003,
-              fields: [
-                { name: '📌 To Buy', value: g.toBuy, inline: true },
-                { name: '✅ In Pantry', value: g.pantry, inline: true },
-              ],
+              title: '📌 TO BUY',
+              color: 15158332,
+              description: activeText,
+              timestamp: new Date().toISOString(),
             },
+          ],
+        };
+
+        // Payload for Bottom Message
+        const pantryPayload = {
+          content: '',
+          embeds: [
             {
-              title: '🛠️ Already done List',
-              color: 15105570,
-              fields: [
-                { name: '📌 Need', value: h.toBuy, inline: true },
-                { name: '✅ Have', value: h.pantry, inline: true },
-              ],
+              title: '✅ IN PANTRY',
+              color: 3066993,
+              description: pantryText,
               timestamp: new Date().toISOString(),
             },
           ],
         };
 
         try {
-          await fetch(`${WEBHOOK_URL}/messages/${MESSAGE_ID}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          });
+          // Send PATCH to both messages simultaneously
+          await Promise.all([
+            fetch(`${WEBHOOK_URL}/messages/${MESSAGE_ID_ACTIVE}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(activePayload),
+            }),
+            fetch(`${WEBHOOK_URL}/messages/${MESSAGE_ID_PANTRY}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(pantryPayload),
+            }),
+          ]);
         } catch (err) {
-          console.error('Fetch Failed:', err);
+          console.error('Failed to update Discord messages:', err);
         }
       }
 
