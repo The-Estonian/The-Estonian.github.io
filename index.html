@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Shared Grocery Manager</title>
+    <title>Shared Grocery Manager!</title>
     <style>
       body {
         font-family: sans-serif;
@@ -19,7 +19,7 @@
         gap: 10px;
         margin-bottom: 20px;
       }
-      input[type="text"] {
+      input[type='text'] {
         flex: 1;
         padding: 12px;
         border-radius: 8px;
@@ -37,11 +37,18 @@
         font-weight: bold;
         cursor: pointer;
       }
+      .section-title {
+        margin-top: 25px;
+        font-size: 18px;
+        text-align: left;
+        border-bottom: 1px solid #333;
+        padding-bottom: 5px;
+      }
       .grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
         gap: 10px;
-        margin-top: 20px;
+        margin-top: 10px;
       }
       .item-card {
         display: flex;
@@ -57,6 +64,10 @@
       }
       .item-card.in-pantry {
         background: #2ecc71;
+        color: white;
+      }
+      .item-card.master {
+        background: #34495e;
         color: white;
       }
       .toggle-area {
@@ -79,6 +90,28 @@
         align-items: center;
         justify-content: center;
       }
+      .master-toggle-btn {
+        margin: 20px 0;
+        background: #9b59b6;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: pointer;
+        width: 100%;
+      }
+      .master-section {
+        display: none;
+        background: #1a1a1a;
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 10px;
+        border: 1px solid #333;
+      }
+      .master-section.open {
+        display: block;
+      }
       .footer-actions {
         margin-top: 30px;
       }
@@ -100,16 +133,33 @@
       <input
         type="text"
         id="new-item-input"
-        placeholder="Add item..."
-        onkeydown="if(event.key === 'Enter') addItem()"
+        placeholder="Add to master list..."
+        onkeydown="if (event.key === 'Enter') addToMaster();"
       />
-      <button class="add-btn" onclick="addItem()">Add</button>
+      <button class="add-btn" onclick="addToMaster()">Add</button>
     </div>
 
-    <div class="grid" id="button-container">Fetching list from Discord...</div>
+    <div class="section-title">📌 TO DO (To Buy)</div>
+    <div class="grid" id="to-buy-container">Fetching list from Discord...</div>
+
+    <div class="section-title">✅ ALREADY DONE (In Pantry)</div>
+    <div class="grid" id="pantry-container"></div>
+
+    <button class="master-toggle-btn" onclick="toggleMasterSection()">
+      📦 Toggle Master List (Background)
+    </button>
+
+    <div class="master-section" id="master-section">
+      <div style="text-align: left; font-weight: bold; margin-bottom: 10px">
+        Master List Items (Click to activate)
+      </div>
+      <div class="grid" id="master-container"></div>
+    </div>
 
     <div class="footer-actions">
-      <button class="reset-btn" onclick="resetWebhook()">Reset Webhook URL</button>
+      <button class="reset-btn" onclick="resetWebhook()">
+        Reset Webhook URL
+      </button>
     </div>
 
     <script>
@@ -124,26 +174,28 @@
 
       const MESSAGE_ID_ACTIVE = '1553444411508133930';
       const MESSAGE_ID_PANTRY = '1553448201078440050';
+      const MESSAGE_ID_MASTER = 'PAigalda_Siia_Master_Sõnumi_ID'; // Asenda õige Discordi sõnumi ID-ga
 
-      let items = [];
+      let items = []; // Sisaldab objekte: { name, status: 'tobuy' | 'pantry' | 'master' }
 
-      // Fetch live messages directly from Discord
       async function fetchFromDiscord() {
         if (!WEBHOOK_URL) return;
 
         try {
-          const [resActive, resPantry] = await Promise.all([
+          const [resActive, resPantry, resMaster] = await Promise.all([
             fetch(`${WEBHOOK_URL}/messages/${MESSAGE_ID_ACTIVE}`),
-            fetch(`${WEBHOOK_URL}/messages/${MESSAGE_ID_PANTRY}`)
+            fetch(`${WEBHOOK_URL}/messages/${MESSAGE_ID_PANTRY}`),
+            fetch(`${WEBHOOK_URL}/messages/${MESSAGE_ID_MASTER}`),
           ]);
 
           const dataActive = await resActive.json();
           const dataPantry = await resPantry.json();
+          const dataMaster = await resMaster.json();
 
           const activeText = dataActive.embeds?.[0]?.description || '';
           const pantryText = dataPantry.embeds?.[0]?.description || '';
+          const masterText = dataMaster.embeds?.[0]?.description || '';
 
-          // Parse bullet points out of the embed descriptions
           const parseItems = (text) =>
             text
               .split('\n')
@@ -152,87 +204,155 @@
 
           const activeNames = parseItems(activeText);
           const pantryNames = parseItems(pantryText);
+          const masterNames = parseItems(masterText);
 
-          items = [
-            ...activeNames.map((name) => ({ name, toBuy: true })),
-            ...pantryNames.map((name) => ({ name, toBuy: false }))
-          ];
+          // Ehitame ühtse itemite массиvi, vältides duplikaate eelistusega: tobuy -> pantry -> master
+          const itemMap = new Map();
 
-          renderButtons();
+          masterNames.forEach((name) => itemMap.set(name, 'master'));
+          pantryNames.forEach((name) => itemMap.set(name, 'pantry'));
+          activeNames.forEach((name) => itemMap.set(name, 'tobuy'));
+
+          items = Array.from(itemMap.entries()).map(([name, status]) => ({
+            name,
+            status,
+          }));
+
+          renderUI();
         } catch (err) {
           console.error('Failed to fetch from Discord:', err);
-          document.getElementById('button-container').innerHTML =
+          document.getElementById('to-buy-container').innerHTML =
             '<p style="color: #e74c3c;">Failed to load list from Discord.</p>';
         }
       }
 
-      function renderButtons() {
-        const container = document.getElementById('button-container');
-        container.innerHTML = '';
+      function renderUI() {
+        const toBuyContainer = document.getElementById('to-buy-container');
+        const pantryContainer = document.getElementById('pantry-container');
+        const masterContainer = document.getElementById('master-container');
 
-        if (items.length === 0) {
-          container.innerHTML = '<p style="color: #888;">No items found in Discord.</p>';
-          return;
+        toBuyContainer.innerHTML = '';
+        pantryContainer.innerHTML = '';
+        masterContainer.innerHTML = '';
+
+        const toBuyItems = items.filter((i) => i.status === 'tobuy');
+        const pantryItems = items.filter((i) => i.status === 'pantry');
+        const masterItems = items.filter((i) => i.status === 'master');
+
+        if (toBuyItems.length === 0) {
+          toBuyContainer.innerHTML =
+            '<p style="color: #888; font-size: 14px;">No items to buy.</p>';
+        }
+        if (pantryItems.length === 0) {
+          pantryContainer.innerHTML =
+            '<p style="color: #888; font-size: 14px;">No items in pantry.</p>';
+        }
+        if (masterItems.length === 0) {
+          masterContainer.innerHTML =
+            '<p style="color: #888; font-size: 14px;">Master list is empty.</p>';
         }
 
         items.forEach((item, index) => {
           const card = document.createElement('div');
-          card.className = `item-card ${item.toBuy ? 'to-buy' : 'in-pantry'}`;
+          card.className = `item-card ${item.status === 'tobuy' ? 'to-buy' : item.status === 'pantry' ? 'in-pantry' : 'master'}`;
 
           const toggleArea = document.createElement('div');
           toggleArea.className = 'toggle-area';
           toggleArea.textContent = item.name;
-          toggleArea.onclick = () => toggleItem(index);
+
+          if (item.status === 'tobuy') {
+            toggleArea.onclick = () => changeStatus(index, 'pantry');
+          } else if (item.status === 'pantry') {
+            toggleArea.onclick = () => changeStatus(index, 'tobuy');
+          } else {
+            toggleArea.onclick = () => changeStatus(index, 'tobuy'); // Masterist klikkides läheb to-buy nimekirja
+          }
 
           const removeBtn = document.createElement('button');
           removeBtn.className = 'remove-btn';
           removeBtn.innerHTML = '✕';
           removeBtn.onclick = (e) => {
             e.stopPropagation();
-            removeItem(index);
+            handleRemove(index);
           };
 
           card.appendChild(toggleArea);
           card.appendChild(removeBtn);
-          container.appendChild(card);
+
+          if (item.status === 'tobuy') {
+            toBuyContainer.appendChild(card);
+          } else if (item.status === 'pantry') {
+            pantryContainer.appendChild(card);
+          } else {
+            masterContainer.appendChild(card);
+          }
         });
       }
 
-      async function addItem() {
+      async function addToMaster() {
         const input = document.getElementById('new-item-input');
         const name = input.value.trim();
         if (!name) return;
 
-        items.push({ name: name, toBuy: true });
+        // Kontrollime kas juba eksisteerib
+        const existing = items.find(
+          (i) => i.name.toLowerCase() === name.toLowerCase(),
+        );
+        if (existing) {
+          existing.status = 'tobuy'; // Kui eksisteerib, tõstame otse to-buy nimekirja
+        } else {
+          items.push({ name: name, status: 'tobuy' }); // Või lisame uue otse to-buy nimekirja
+        }
+
         input.value = '';
-        renderButtons();
+        renderUI();
         await updateDiscord();
       }
 
-      async function removeItem(index) {
-        items.splice(index, 1);
-        renderButtons();
+      async function changeStatus(index, newStatus) {
+        items[index].status = newStatus;
+        renderUI();
         await updateDiscord();
       }
 
-      async function toggleItem(index) {
-        items[index].toBuy = !items[index].toBuy;
-        renderButtons();
+      async function handleRemove(index) {
+        const item = items[index];
+        if (item.status === 'pantry') {
+          // Done/Pantry nimekirjast kustutades läheb tagasi master listi
+          item.status = 'master';
+        } else {
+          // Muudest nimekirjadest kustutades eemaldatakse täielikult
+          items.splice(index, 1);
+        }
+        renderUI();
         await updateDiscord();
+      }
+
+      function toggleMasterSection() {
+        const section = document.getElementById('master-section');
+        section.classList.toggle('open');
       }
 
       async function updateDiscord() {
         if (!WEBHOOK_URL) return;
 
-        const activeText = items
-          .filter((i) => i.toBuy)
-          .map((i) => `• ${i.name}`)
-          .join('\n') || '*None*';
+        const activeText =
+          items
+            .filter((i) => i.status === 'tobuy')
+            .map((i) => `• ${i.name}`)
+            .join('\n') || '*None*';
 
-        const pantryText = items
-          .filter((i) => !i.toBuy)
-          .map((i) => `• ${i.name}`)
-          .join('\n') || '*None*';
+        const pantryText =
+          items
+            .filter((i) => i.status === 'pantry')
+            .map((i) => `• ${i.name}`)
+            .join('\n') || '*None*';
+
+        const masterText =
+          items
+            .filter((i) => i.status === 'master')
+            .map((i) => `• ${i.name}`)
+            .join('\n') || '*None*';
 
         const activePayload = {
           embeds: [
@@ -240,9 +360,9 @@
               title: '📌 TO DO (To Buy)',
               color: 15158332,
               description: activeText,
-              timestamp: new Date().toISOString()
-            }
-          ]
+              timestamp: new Date().toISOString(),
+            },
+          ],
         };
 
         const pantryPayload = {
@@ -251,9 +371,20 @@
               title: '✅ ALREADY DONE (In Pantry)',
               color: 3066993,
               description: pantryText,
-              timestamp: new Date().toISOString()
-            }
-          ]
+              timestamp: new Date().toISOString(),
+            },
+          ],
+        };
+
+        const masterPayload = {
+          embeds: [
+            {
+              title: '📦 MASTER LIST',
+              color: 3447003,
+              description: masterText,
+              timestamp: new Date().toISOString(),
+            },
+          ],
         };
 
         try {
@@ -261,13 +392,18 @@
             fetch(`${WEBHOOK_URL}/messages/${MESSAGE_ID_ACTIVE}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(activePayload)
+              body: JSON.stringify(activePayload),
             }),
             fetch(`${WEBHOOK_URL}/messages/${MESSAGE_ID_PANTRY}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(pantryPayload)
-            })
+              body: JSON.stringify(pantryPayload),
+            }),
+            fetch(`${WEBHOOK_URL}/messages/${MESSAGE_ID_MASTER}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(masterPayload),
+            }),
           ]);
         } catch (err) {
           console.error('Failed to update Discord:', err);
@@ -279,7 +415,6 @@
         location.reload();
       }
 
-      // Read current state directly from Discord on load
       fetchFromDiscord();
     </script>
   </body>
